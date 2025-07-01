@@ -1,5 +1,211 @@
 const API_BASE_URL = 'https://recherche-entreprises.api.gouv.fr';
 
+// Service pour enrichir les données avec les informations RCS et documents
+class CompanyEnrichmentService {
+  // Simulation d'enrichissement des données RCS
+  // En production, vous devriez utiliser une API comme Pappers, Infogreffe, ou l'API INPI
+  static async enrichCompanyData(company: Company): Promise<Company> {
+    try {
+      // Simulation des données RCS basées sur le SIREN
+      const rcsData = this.generateRCSData(company);
+      const documents = this.generateDocuments(company);
+      
+      return {
+        ...company,
+        rcs: rcsData,
+        documents: documents
+      };
+    } catch (error) {
+      console.warn('Impossible d\'enrichir les données RCS:', error);
+      return company;
+    }
+  }
+
+  private static generateRCSData(company: Company) {
+    // Simulation des données RCS
+    const greffes = [
+      { code: '7501', nom: 'Paris', ville: 'Paris' },
+      { code: '6901', nom: 'Lyon', ville: 'Lyon' },
+      { code: '1301', nom: 'Marseille', ville: 'Marseille' },
+      { code: '3101', nom: 'Toulouse', ville: 'Toulouse' },
+      { code: '5901', nom: 'Lille', ville: 'Lille' },
+      { code: '3301', nom: 'Bordeaux', ville: 'Bordeaux' },
+      { code: '4401', nom: 'Nantes', ville: 'Nantes' },
+      { code: '6701', nom: 'Strasbourg', ville: 'Strasbourg' }
+    ];
+
+    const departement = company.siege?.departement || '75';
+    const greffeIndex = parseInt(departement) % greffes.length;
+    const greffe = greffes[greffeIndex];
+
+    return {
+      numero_rcs: `${company.siren} RCS ${greffe.ville}`,
+      lieu_immatriculation: greffe.ville,
+      greffe: `Greffe du Tribunal de Commerce de ${greffe.ville}`,
+      code_greffe: greffe.code,
+      date_immatriculation: company.siege?.date_creation || company.date_creation,
+      capital_social: this.generateCapitalSocial(company),
+      devise_capital: 'EUR',
+      forme_juridique: company.siege?.libelle_nature_juridique || 'Société par actions simplifiée',
+      forme_juridique_code: company.nature_juridique || '5710',
+      duree_personne_morale: '99 ans',
+      date_cloture_exercice: '31/12',
+      objet_social: this.generateObjetSocial(company)
+    };
+  }
+
+  private static generateCapitalSocial(company: Company): number {
+    // Simulation du capital social basé sur la taille de l'entreprise
+    const effectif = company.siege?.tranche_effectif_salarie || '00';
+    
+    switch (effectif) {
+      case '00': return Math.floor(Math.random() * 50000) + 1000; // 1K-50K
+      case '01': case '02': return Math.floor(Math.random() * 100000) + 10000; // 10K-100K
+      case '03': case '11': return Math.floor(Math.random() * 500000) + 50000; // 50K-500K
+      case '12': case '21': return Math.floor(Math.random() * 2000000) + 100000; // 100K-2M
+      case '22': case '31': return Math.floor(Math.random() * 10000000) + 500000; // 500K-10M
+      default: return Math.floor(Math.random() * 50000000) + 1000000; // 1M-50M
+    }
+  }
+
+  private static generateObjetSocial(company: Company): string {
+    const activite = company.siege?.libelle_activite_principale || '';
+    
+    if (activite.toLowerCase().includes('informatique') || activite.toLowerCase().includes('logiciel')) {
+      return 'Développement, édition et commercialisation de logiciels informatiques, conseil en systèmes et logiciels informatiques, formation informatique.';
+    } else if (activite.toLowerCase().includes('commerce')) {
+      return 'Commerce de gros et de détail, import-export, représentation commerciale, courtage.';
+    } else if (activite.toLowerCase().includes('conseil')) {
+      return 'Conseil en organisation et gestion d\'entreprise, études et recherches, formation professionnelle.';
+    } else if (activite.toLowerCase().includes('construction') || activite.toLowerCase().includes('bâtiment')) {
+      return 'Travaux de construction, rénovation, aménagement, maîtrise d\'œuvre, études techniques.';
+    } else {
+      return `Activités liées à ${activite.toLowerCase()}, et toutes opérations commerciales, industrielles, financières, mobilières et immobilières s\'y rapportant.`;
+    }
+  }
+
+  private static generateDocuments(company: Company): CompanyDocument[] {
+    const documents: CompanyDocument[] = [];
+    const currentYear = new Date().getFullYear();
+    
+    // Statuts
+    documents.push({
+      id: `statuts-${company.siren}`,
+      type: 'statuts',
+      libelle: 'Statuts constitutifs',
+      date_depot: company.siege?.date_creation || company.date_creation,
+      disponible: true,
+      format: 'PDF',
+      pages: Math.floor(Math.random() * 20) + 10,
+      taille: Math.floor(Math.random() * 500000) + 100000
+    });
+
+    // Comptes annuels des 3 dernières années
+    for (let year = currentYear - 1; year >= currentYear - 3; year--) {
+      documents.push({
+        id: `comptes-${company.siren}-${year}`,
+        type: 'comptes_annuels',
+        libelle: `Comptes annuels ${year}`,
+        date_depot: `${year + 1}-06-30`,
+        date_cloture_exercice: `${year}-12-31`,
+        disponible: Math.random() > 0.3, // 70% de chance d'être disponible
+        format: 'PDF',
+        pages: Math.floor(Math.random() * 30) + 15,
+        taille: Math.floor(Math.random() * 1000000) + 200000
+      });
+    }
+
+    // Rapports de gestion
+    for (let year = currentYear - 1; year >= currentYear - 2; year--) {
+      if (Math.random() > 0.5) { // 50% de chance d'avoir un rapport
+        documents.push({
+          id: `rapport-${company.siren}-${year}`,
+          type: 'rapport_gestion',
+          libelle: `Rapport de gestion ${year}`,
+          date_depot: `${year + 1}-06-30`,
+          date_cloture_exercice: `${year}-12-31`,
+          disponible: true,
+          format: 'PDF',
+          pages: Math.floor(Math.random() * 50) + 20,
+          taille: Math.floor(Math.random() * 800000) + 150000
+        });
+      }
+    }
+
+    // Modifications statutaires récentes
+    if (Math.random() > 0.6) { // 40% de chance d'avoir des modifications
+      documents.push({
+        id: `modification-${company.siren}`,
+        type: 'modification_statutaire',
+        libelle: 'Modification des statuts',
+        date_depot: `${currentYear - 1}-03-15`,
+        disponible: true,
+        format: 'PDF',
+        pages: Math.floor(Math.random() * 10) + 5,
+        taille: Math.floor(Math.random() * 200000) + 50000
+      });
+    }
+
+    return documents.sort((a, b) => 
+      new Date(b.date_depot || '').getTime() - new Date(a.date_depot || '').getTime()
+    );
+  }
+
+  static getDocumentTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      'statuts': 'Statuts',
+      'comptes_annuels': 'Comptes annuels',
+      'rapport_gestion': 'Rapport de gestion',
+      'modification_statutaire': 'Modification statutaire',
+      'proces_verbal': 'Procès-verbal',
+      'bilan': 'Bilan',
+      'compte_resultat': 'Compte de résultat',
+      'annexe': 'Annexe'
+    };
+    return labels[type] || type;
+  }
+
+  static getDocumentIcon(type: string): string {
+    switch (type) {
+      case 'statuts': return '📋';
+      case 'comptes_annuels': return '📊';
+      case 'rapport_gestion': return '📈';
+      case 'modification_statutaire': return '📝';
+      case 'proces_verbal': return '📄';
+      default: return '📄';
+    }
+  }
+
+  static formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // Simulation du téléchargement de document
+  static async downloadDocument(document: CompanyDocument): Promise<void> {
+    try {
+      // En production, vous feriez un appel à l'API pour obtenir l'URL de téléchargement
+      const blob = new Blob(['Document simulé'], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${document.libelle.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement:', error);
+      throw new Error('Impossible de télécharger le document');
+    }
+  }
+}
+
 export class CompanySearchService {
   static async searchCompanies(
     query: string,
@@ -48,7 +254,17 @@ export class CompanySearchService {
         throw new Error(data.message || 'Erreur lors de la recherche');
       }
 
-      return data;
+      // Enrichir les données avec les informations RCS
+      const enrichedResults = await Promise.all(
+        data.results.map((company: Company) => 
+          CompanyEnrichmentService.enrichCompanyData(company)
+        )
+      );
+
+      return {
+        ...data,
+        results: enrichedResults
+      };
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
       if (error instanceof Error) {
@@ -95,7 +311,17 @@ export class CompanySearchService {
         throw new Error(data.message || 'Erreur lors de la recherche géographique');
       }
 
-      return data;
+      // Enrichir les données avec les informations RCS
+      const enrichedResults = await Promise.all(
+        data.results.map((company: Company) => 
+          CompanyEnrichmentService.enrichCompanyData(company)
+        )
+      );
+
+      return {
+        ...data,
+        results: enrichedResults
+      };
     } catch (error) {
       console.error('Erreur lors de la recherche géographique:', error);
       if (error instanceof Error) {
@@ -125,7 +351,12 @@ export class CompanySearchService {
 
       // Vérifier que le SIREN correspond exactement
       const company = data.results?.find((c: Company) => c.siren === cleanSiren);
-      return company || null;
+      
+      if (company) {
+        return await CompanyEnrichmentService.enrichCompanyData(company);
+      }
+      
+      return null;
     } catch (error) {
       console.error('Erreur lors de la recherche SIREN:', error);
       if (error instanceof Error) {
@@ -153,7 +384,13 @@ export class CompanySearchService {
         throw new Error(data.message || 'Erreur lors de la recherche');
       }
 
-      return data.results?.[0] || null;
+      const company = data.results?.[0];
+      
+      if (company) {
+        return await CompanyEnrichmentService.enrichCompanyData(company);
+      }
+      
+      return null;
     } catch (error) {
       console.error('Erreur lors de la recherche SIRET:', error);
       if (error instanceof Error) {
@@ -322,4 +559,5 @@ export class CompanySearchService {
   }
 }
 
-export type { SearchResponse, CompanyDetails, SearchFilters, NearPointFilters, Company, Etablissement, Complements, Dirigeant, Finances } from '../types/company';
+export { CompanyEnrichmentService };
+export type { SearchResponse, CompanyDetails, SearchFilters, NearPointFilters, Company, Etablissement, Complements, Dirigeant, Finances, CompanyDocument } from '../types/company';
