@@ -19,11 +19,48 @@ export interface Company {
   annee_categorie_entreprise?: string;
   etat_administratif?: string;
   nature_juridique?: string;
+  libelle_nature_juridique?: string;
   activite_principale?: string;
+  libelle_activite_principale?: string;
   section_activite_principale?: string;
   tranche_effectif_salarie?: string;
+  libelle_tranche_effectif?: string;
   annee_tranche_effectif_salarie?: string;
   caractere_employeur?: string;
+  
+  // Informations RCS étendues
+  rcs?: {
+    numero_rcs?: string;
+    lieu_immatriculation?: string;
+    greffe?: string;
+    code_greffe?: string;
+    date_immatriculation?: string;
+    date_radiation?: string;
+    capital_social?: number;
+    devise_capital?: string;
+    forme_juridique?: string;
+    forme_juridique_code?: string;
+    duree_personne_morale?: string;
+    date_cloture_exercice?: string;
+    objet_social?: string;
+  };
+  
+  // Documents disponibles
+  documents?: CompanyDocument[];
+}
+
+export interface CompanyDocument {
+  id: string;
+  type: string;
+  libelle: string;
+  date_depot?: string;
+  date_cloture_exercice?: string;
+  numero_depot?: string;
+  disponible: boolean;
+  url_telechargement?: string;
+  taille?: number;
+  format?: string;
+  pages?: number;
 }
 
 export interface Etablissement {
